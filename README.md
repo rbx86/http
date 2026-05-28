@@ -18,6 +18,79 @@ memset(&hints, 0, sizeof(hints));
 
 `hints` will be passed into `getaddrinfo()`. `getaddrinfo()` will return network address results based on preferences defined in `hints`. These results will be used to setup the socket.
 
+```c
+struct addrinfo {
+    int ai_flags;
+    int ai_family;              // AF_INET, AF_INET6, AF_UNSPEC
+    int ai_socktype;            // SOCK_STREAM, SOCK_DGRAM
+    int ai_protocol;            // 0 for "any", tcp, udp
+    size_t ai_addrlen;          // size of ai_addr in bytes
+    struct sockaddr *ai_addr;   // struct sockaddr_in or _in6
+    char *ai_canonname;
+
+    struct addrinfo *ai_next;   // linked list, next node
+};
+```
+---
+
+#### Note on `sockaddr`
+
+`struct sockaddr` holds socket address information for many types of sockets.
+
+```c
+struct sockaddr {
+    unsigned short sa_family;   // address family: AF_INET(IPv4), AF_INET6(IPv6)
+    char sa_data[14];           // 14b protocol address (destination IP address + port number for socket)
+};
+```
+However, no one actually uses `sockaddr`. It's more of a generic base type which `sockaddr_in` (IPv4) and `sockaddr_in6` (IPv6) builts upon. These have the fields such as `.sin_addr`/`.sin6_addr` and `.sin_port`/`.sin6_port` for the necessary address and port information. For example,
+
+```c
+struct sockaddr_in {
+    short int sin_family;           // AF_INET (IPv4)
+    unsigned short int sin_port;    // port number
+    struct in_addr sin_addr;        // IPv4 address
+    unsigned char sin_zero[8];      // just padding
+};
+```
+
+While `connect()` expects `struct sockaddr *`, we can pass `struct sockaddr_in` or `sockaddr_in6` and typecast it to a pointer to `struct sock_addr`.
+
+> **NOTE**: The last field in `sockaddr_in` is to pad the struct so it matches the length of `struct sockaddr`. `sin_port` should be set to Network Byte Order via `htons()`
+
+```c
+struct in_addr {
+    uint32_t s_addr; // IP address (4 bytes->32 bits)
+};
+```
+This is just the IP address. Lastly there's `sockaddr_storage`, the other sibling of `_in` and `_in6`. This is **just large enough** to hold both IPv4 and IPv6 structures. Sometimes when you make a call, you won't know in advance if it's an IPv4 or IPv6 address that's going to fill your `sock_addr` so you use `_storage` which is slightly larger than `struct sockaddr` and type case it to the type you need.
+
+```c
+struct sockaddr_storage {
+    sa_family_t ss_family; // address family: AF_INET, AF_INET6
+
+    // padding (INGORE)
+    char __ss_pad1[_SS_PAD1SIZE];
+    int64_t __ss_align;
+    char __ss_pad2[_SS_PAD2SIZE];
+};
+```
+
+> [!tip]
+> To know what type to cast `struct sockaddr_storage` to, we can check the `ss_family` field; if it's `AF_INET` (IPv4) or `AF_INET6` (IPv6). For example;
+
+```c
+if (their_addr.ss_family == AF_INET) {
+    struct sockaddr_in *s = (struct sockaddr_in *)&their_addr;
+    // now use s->sin_addr, s->sin_port etc
+} else {
+    struct sockaddr_in6 *s = (struct sockaddr_in6 *)&their_addr;
+    // now use s->sin6_addr, s->sin6_port etc
+}
+```
+
+---
+
 2. `getaddrinfo()` for network results
 
 This will return a pointer to a linked list of `addrinfo` structures with all the data you'd need to set up the socket. Linked list because one hostname might resolve to more than one address (eg. IPv4 and IPv6 addresses).
