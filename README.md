@@ -45,3 +45,8 @@ int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 > Just like you use `read()` and `write()` to read/write into a file using its file descriptor. You'll use `send()` and `recv()` on a socket. The OS abstracts a network connection with sockets. 
 
 4. Bind the socket with `bind()`
+
+## References
+
+- Beej's Guide to Network Programming Using Internet Sockets ([dope ass book](https://www.beej.us/guide/bgnet/])).
+- The internet
