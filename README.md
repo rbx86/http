@@ -6,6 +6,8 @@ What better way to learn a programming language than building a HTTP server :D. 
 
 ## Development notes
 
+**syscalls** help processes communicate with a kernel.
+
 ### Making a skeleton server
 
 1. Setting up the `addrinfo` struct for hints
@@ -131,6 +133,41 @@ int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 >Just like you use `read()` and `write()` to read/write into a file using its file descriptor. You'll use `send()` and `recv()` on a socket. The OS abstracts a network connection with sockets.
 
 4. Bind the socket with `bind()`
+
+```c
+bind(sockfd, res->ai_addr, res->ai_addrlen)
+```
+
+`bind()` binds a socket to port, this tells it where to listen from for incoming connection requests. The port number is used by the kernel to match an incoming packet to a certain process's socket descriptor. This is mostly used when you're using `listen()` and you're the server, not the client. It isn't required if you're the client .
+
+
+5. `accept()`
+
+---
+
+#### Retrieving the client's IP address (`inet_pton()` and `inet_ntop()`)
+
+As we know `struct sockaddr_storage` can have an `ss_family` of `AF_INET` or `AF_INET6`. Before we can retrieve the client's IP address, we need to identify what kind of IP address is it. We do this using a conditional check. We can then print the IP address using `inet_ntop()`. This function converts the binary representation of the IP address to a string (number & dots notation / hex and colons notation). This function requires 4 parametes:
+
+1. Address family (`AD_INET`/`AF_INET6`)
+2. The location of the IP address stored in the struct (`&(client_in->sin_addr)`/`&(client_in6->sin6_addr)`)
+3. A pointer to a string to hold the result (`char ip4[INET_ADDRSTRLEN]`/`char ip6[INET6_ADDRSTRLEN]`)
+4. Length of the string to store results (conviniently there are macros for this: `INET_ADDRSTRLEN` and `INET6_ADDRSTRLEN`)
+
+```c
+  // client info
+if (client_addr.ss_family == AF_INET) {
+    char ip4[INET_ADDRSTRLEN];
+    struct sockaddr_in *client_in = (struct sockaddr_in *)&client_addr;
+    inet_ntop(AF_INET, &(client_in->sin_addr), ip4, INET_ADDRSTRLEN);
+    printf("Client IPv4 Address: %s\n", ip4);
+} else {
+    char ip6[INET6_ADDRSTRLEN];
+    struct sockaddr_in6 *client_in6 = (struct sockaddr_in6 *)&client_addr;
+    inet_ntop(AF_INET6, &(client_in6->sin6_addr), ip6, INET6_ADDRSTRLEN);
+    printf("Client IPv6 Address: %s\n", ip6);
+}
+```
 
 ## References
 
