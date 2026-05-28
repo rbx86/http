@@ -1,10 +1,11 @@
+#include <netinet/in.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <string.h>
 #include <stdio.h>
 #include <err.h>
-#include <stdlib.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 
 #define BACKLOGS 10
 
@@ -16,16 +17,16 @@ int main() {
 
   memset(&hints, 0, sizeof(hints));
 
-  hints.ai_family = AF_UNSPEC; // IPv4 or IPv6
-  hints.ai_socktype = SOCK_STREAM; // TCP socket
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_PASSIVE;
 
   int status =  getaddrinfo(NULL, "3490", &hints, &res);
   if (status != 0) {
     fprintf(stderr, "%s\n", gai_strerror(status));
-    exit(1);
+    return 1;
   }
-  printf("[*] getaddrinfo() Successful\n");
+  printf("[*] Get Address Info Successful\n");
 
   sockfd = socket(
     res->ai_family,
@@ -34,12 +35,16 @@ int main() {
   );
   if (sockfd == -1){
     perror("server: socket");
-    exit(1);
+    freeaddrinfo(res);
+    return 1;
   }
+  printf("[*] Socket Created\n");
 
   if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
     perror("server: bind");
-    exit(1);
+    freeaddrinfo(res);
+    close(sockfd);
+    return 1;
   }
   printf("[*] Bind Successful\n");
   
@@ -47,14 +52,26 @@ int main() {
 
   if (listen(sockfd, BACKLOGS) == -1) {
     perror("server: listen");
-    // close(sockfd);
-    exit(1);
+    close(sockfd);
+    return 1;
   }
   printf("[*] Listening on port 3490\n");
 
   socklen_t addr_len = sizeof(client_addr);
   client_fd = accept(sockfd, (struct sockaddr *)&client_addr, &addr_len);
 
-  close(sockfd);
+  // client info
+  if (client_addr.ss_family == AF_INET) {
+    char ip4[INET_ADDRSTRLEN];
+    struct sockaddr_in *client_in = (struct sockaddr_in *)&client_addr;
+    inet_ntop(AF_INET, &(client_in->sin_addr), ip4, INET_ADDRSTRLEN);
+    printf("Client IPv4 Address: %s\n", ip4);
+  } else {
+    char ip6[INET6_ADDRSTRLEN];
+    struct sockaddr_in6 *client_in6 = (struct sockaddr_in6 *)&client_addr;
+    inet_ntop(AF_INET6, &(client_in6->sin6_addr), ip6, INET6_ADDRSTRLEN);
+    printf("Client IPv6 Address: %s\n", ip6);
+  }
+  
   return 0;
 }
