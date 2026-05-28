@@ -105,9 +105,21 @@ hints.ai_flag = AI_PASSIVE;
 getaddrinfo(NULL, PORT, &hints, &res);
 ```
 
-NOTE: `hints` only stores network preferences, the results are stored in `res`.
+>[!note]
+>`hints` only stores network preferences, the results are stored in `res`.
+
+We use `getaddrinfo()` because we require specific information to create the socket and bind it. Before this existed, folks would fill in all this information manually, which would be tedious and error prone. 
 
 3. Create the socket with `socket()`
+
+`socket()` exptects 3 arguments:
+
+1. `int domain` // `ai_family` (Address family): `AF_INET`(IPv4) or `AF_INET6`(IPv6)
+2. `int type` // `ai_socktype`: `SOCK_STREAM`(TCP) or `SOCK_DGRAM`(UDP)
+3. `int protocol` // `ai_protocol`: 0/auto, but filled in for ye
+
+>[!note]
+>`ai_family` is type `int`? But isn't it `AF_INET`? well, these are just `int`s under the hood via `#define`. (eg. `#define AF_INET 2`).
 
 ```c
 int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -115,7 +127,8 @@ int sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
 
 `socket()` will return a socket file descriptor (UID for the created socket) which you'll use to perform actions on the socket.
 
-> Just like you use `read()` and `write()` to read/write into a file using its file descriptor. You'll use `send()` and `recv()` on a socket. The OS abstracts a network connection with sockets. 
+>[!tip] 
+>Just like you use `read()` and `write()` to read/write into a file using its file descriptor. You'll use `send()` and `recv()` on a socket. The OS abstracts a network connection with sockets.
 
 4. Bind the socket with `bind()`
 
