@@ -33,12 +33,12 @@ int main() {
     res->ai_protocol
   );
   if (sockfd == -1){
-    perror("socket");
+    perror("server: socket");
     exit(1);
   }
 
   if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
-    perror("bind()");
+    perror("server: bind");
     exit(1);
   }
   printf("[*] Bind Successful\n");
@@ -46,7 +46,7 @@ int main() {
   freeaddrinfo(res);
 
   if (listen(sockfd, BACKLOGS) == -1) {
-    perror("Listen failed");
+    perror("server: listen");
     // close(sockfd);
     exit(1);
   }
