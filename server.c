@@ -1,4 +1,5 @@
 #include <arpa/inet.h>
+#include <asm-generic/socket.h>
 #include <err.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -54,10 +55,12 @@ void handle_client(int client_fd, struct sockaddr_storage *client_addr) {
 }
 
 int main() {
+  setbuf(stdout, NULL);
 
   struct addrinfo hints, *res;
   struct sockaddr_storage client_addr;
   int sockfd, client_fd;
+  int yes = 1;
 
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
@@ -69,33 +72,29 @@ int main() {
     fprintf(stderr, "%s\n", gai_strerror(gai));
     return 1;
   }
-  printf("[*] Get Address Info Successful\n");
 
   sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
   if (sockfd == -1) {
     perror("server: socket");
-    freeaddrinfo(res);
-    return 1;
+    goto cleanup;
   }
-  printf("[*] Socket Created\n");
+
+  if(setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes)) == -1) {
+    perror("server: setsockopt");
+    goto cleanup;
+  }
 
   if (bind(sockfd, res->ai_addr, res->ai_addrlen) == -1) {
     perror("server: bind");
-    freeaddrinfo(res);
-    close(sockfd);
-    return 1;
+    goto cleanup;
   }
-  printf("[*] Bind Successful\n");
-
-  freeaddrinfo(res);
 
   if (listen(sockfd, BACKLOGS) == -1) {
     perror("server: listen");
-    close(sockfd);
-    return 1;
+    goto cleanup;
   }
-  printf("[*] Listening on port 3490\n");
 
+  // client loop
   while (1) {
     socklen_t addr_len = sizeof(client_addr);
     client_fd = accept(sockfd, (struct sockaddr *)&client_addr, &addr_len);
@@ -107,6 +106,13 @@ int main() {
 
     handle_client(client_fd, &client_addr);
   }
+
+  cleanup:
+    freeaddrinfo(res);
+    if (sockfd == -1){
+      close(sockfd);
+    }
+    return 1;
   
   close(sockfd);
   return 0;
